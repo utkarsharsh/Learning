@@ -4,12 +4,7 @@ const slice= createSlice({
     name:'cart',
     initialState:{
         items:{
-           11:{ poductid:11,number:1},
-            12:{ poductid:12,number:1},
-             13:{ poductid:13,number:1},
-              14:{ poductid:14,number:1},
-               15:{ poductid:15,number:1},
-                16:{ poductid:16,number:1},
+          
         }
          
     },
