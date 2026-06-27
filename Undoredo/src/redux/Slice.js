@@ -1,36 +1,33 @@
-import {createSlice} from '@reduxjs/toolkit'
+import {createSlice} from "@reduxjs/toolkit"
 
-const slice= createSlice({
-    name:'cart',
+
+const TodoSlices= createSlice({
+    name:'TodoSlice',
     initialState:{
-        items:{
-          
-        }
-         
-    },
+      item:{
 
+      }
+    }
+    ,
     reducers : {
-        add  (state,action){
-const {id}=action.payload;
-if(state.items[id]!= undefined){
-   
-state.items[id].number +=1;
-}
-else
-state.items[id]={poductid: id, number:1};
-
-},
-
-remove(state,action){
-const {id}=action.payload;
-delete state.items[id];
-
-}
-
+        add(state,action){
+            const newitem=action.payload;
+            const  {id} =action.payload;
+             console.log(state.item[id],"ddd",id);
+            if(state.item[id]==undefined){
+            state.item={...state.item,[id]:newitem};}
+            else{
+                console.log("hhdd")
+                  state.item[id].count++;
+            }
+                
+        },
+        deletes(state,action){
+            const  {id} =action.payload;
+            delete state.item[id];
+        }
 
     }
 });
-
-export const {add ,remove} =slice.actions;
-
-export default slice.reducer;
+export const {add,deletes}=TodoSlices.actions;
+export default TodoSlices.reducer
