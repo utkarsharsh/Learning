@@ -9,23 +9,25 @@ function App() {
     
   const dispatch=useDispatch();
   const value=useSelector((state) => state.TodoSlice.item);
+ 
+  const id= useSelector((state) => state.TodoSlice.totalIdCount);
   console.log(value)
   // const array= Object.values(value);
   return (
     
     <>
     {
-      // array.map((e,index)=>{
-      //   return <>
-      //  <h1> {e.name}</h1>
-      //   </>
+      value.map((e,index)=>{
+        return <>
+       <h1> {e.name}</h1>
+        </>
 
-      // })
+      })
     }
     <button  onClick={()=>{
       let dummy=
         {
-          id:"3",
+         id,
           name:"qqq",
           count:0  
         }

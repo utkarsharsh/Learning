@@ -4,27 +4,24 @@ import {createSlice} from "@reduxjs/toolkit"
 const TodoSlices= createSlice({
     name:'TodoSlice',
     initialState:{
-      item:{
-
-      }
+      totalIdCount:0,
+      item:[]
     }
     ,
     reducers : {
         add(state,action){
-            const newitem=action.payload;
-            const  {id} =action.payload;
-             console.log(state.item[id],"ddd",id);
-            if(state.item[id]==undefined){
-            state.item={...state.item,[id]:newitem};}
-            else{
-                console.log("hhdd")
-                  state.item[id].count++;
+            const {id}=action.payload;
+           for(let i=0;i<state.item.length;i++){
+            if(state.item[i].id==id){
+                state.item[i].count++;
+                return;
             }
-                
+           }
+           state.item.push(action.payload);
+           state.totalIdCount++;
         },
         deletes(state,action){
-            const  {id} =action.payload;
-            delete state.item[id];
+           
         }
 
     }
