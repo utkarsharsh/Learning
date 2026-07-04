@@ -1,0 +1,3689 @@
+
+
+
+
+
+In-Depth Guide to Node.js Event Loop
+Node.js has become a go-to platform for developers looking to build scalable applications. One of the core concepts that underpins its non-blocking, asynchronous architecture is the Event Loop. This article will provide a comprehensive understanding of the Node.js Event Loop, how it functions, its phases, and how you can leverage it to write efficient code.
+
+What is the Node.js Event Loop?
+The Event Loop is a fundamental part of Node.js’s architecture, enabling it to handle numerous connections simultaneously without being blocked. It allows Node.js to perform non-blocking I/O operations by offloading tasks to the system kernel whenever possible. This characteristic is essential in creating highly performant and scalable applications.
+
+How the Event Loop Works
+The Event Loop operates in several phases that consist of a cycle of processing events. Let’s break down these phases for a clearer understanding:
+
+1. Phases of the Event Loop
+The Event Loop has several distinct phases:
+
+Timers: This phase executes callbacks scheduled by setTimeout() and setInterval().
+I/O Callbacks: This phase processes callbacks associated with I/O operations, like network requests and file system interactions.
+Idle and Prepare: This is an internal phase used for preparation before moving to the poll phase.
+Poll: In this phase, the Event Loop retrieves new events. If there are callbacks to execute, it processes them. If not, it will either wait for new events or execute the ‘check’ phase if callbacks were scheduled through setImmediate().
+Check: This phase executes callbacks scheduled by setImmediate().
+Close Callbacks: This phase handles callback execution for closed resources, like sockets.
+2. Visualization of Event Loop Phases
+Understanding the phases can be easier with a visualization:
+
+
+   +-----------------------+
+   |     Event Loop        |
+   +-----------------------+
+   |  Timers               |
+   |  I/O Callbacks        |
+   |  Idle/Prepare         |
+   |  Poll                 |
+   |  Check                |
+   |  Close Callbacks      |
+   +-----------------------+
+Example: A Simple Event Loop in Action
+Let’s use a straightforward example to illustrate the concept of the Event Loop:
+
+
+console.log('Start');
+
+setTimeout(() => {
+    console.log('Timeout 1');
+}, 0);
+
+setImmediate(() => {
+    console.log('Immediate 1');
+});
+
+console.log('End');
+In this snippet, you’ll see the following output:
+
+
+Start
+End
+Timeout 1
+Immediate 1
+Even though setTimeout and setImmediate were both set to execute immediately, setImmediate is processed after the poll phase, resulting in Timeout 1 appearing before Immediate 1.
+
+Microtasks and Macrotasks
+Within the Event Loop, there are two types of tasks: macrotasks and microtasks. Understanding these two categories helps us better manage asynchronous operations.
+
+What are Macrotasks?
+Macrotasks include operations like:
+
+setTimeout()
+setInterval()
+Event callbacks
+Network requests
+What are Microtasks?
+Microtasks are executed at a higher priority than macrotasks. They include:
+
+Promise callbacks
+process.nextTick()
+This means microtasks are processed before the Event Loop continues back to macrotasks during iteration.
+
+Example of Microtasks and Macrotasks
+To see how these tasks work together, review the following example:
+
+
+console.log('Start');
+
+setTimeout(() => {
+    console.log('Macrotask 1');
+}, 0);
+
+Promise.resolve().then(() => {
+    console.log('Microtask 1');
+});
+
+console.log('End');
+Output will be:
+
+
+Start
+End
+Microtask 1
+Macrotask 1
+This shows that microtasks run before macrotasks, affecting the execution order in your programs.
+
+Common Pitfalls with the Event Loop
+As with any powerful feature, there are common pitfalls developers may encounter:
+
+1. Blocking the Event Loop
+Long-running synchronous code can block the Event Loop, preventing other asynchronous callbacks from executing. For example:
+
+
+function blockingCall() {
+    const end = Date.now() + 10000; // 10 seconds
+    while (Date.now() < end) {}
+}
+
+console.log('Start');
+blockingCall();
+console.log('End');
+In this scenario, ‘End’ will not be logged until the blockingCall() has finished executing. Avoid such patterns to keep your event loop responsive!
+
+2. Not Handling Errors
+Errors in asynchronous callbacks can be challenging to debug. Always wrap your asynchronous code with try-catch or use error-first callback patterns where applicable.
+
+Best Practices for Utilizing the Event Loop
+To make the best use of the Event Loop, consider these best practices:
+
+Avoid blocking calls: Use asynchronous techniques and promises.
+Batch I/O operations: Group similar I/O operations to leverage efficiency.
+Monitor performance: Utilize tools like clinic.js for profiling your Node.js applications.
+Handle errors gracefully: Always handle exceptions in your promises and callbacks.
+Conclusion
+The Node.js Event Loop is a powerful feature that enables efficient handling of asynchronous operations. By understanding how the Event Loop operates, its phases, and the difference between microtasks and macrotasks, you can write better, non-blocking code. Always centralize your efforts on avoiding blocking calls, managing errors, and continually optimizing performance in your applications.
+
+By following best practices and becoming familiar with the workings of the Event Loop, you will empower yourself to build scalable and high-performant applications with Node.js.
+
+explain above step by step
+also
+expain each step with diagram 
+libuv
+callstack vs microtask vs macrotast 
+with example 
+
+Generated image: Node.js event loop cheat-sheet
+
+
+Edit
+
+
+NO image is needed ,
+
+explain the each step of the event loop from zero to advance ...
+
+Perfect. Let's learn the Node.js Event Loop from absolute beginner to advanced, exactly like it is asked in SDE interviews.
+
+1. Why Node.js Needed an Event Loop?
+Suppose you have a restaurant.
+
+Customers come one by one.
+
+There are two ways to serve them.
+
+Traditional Server (Thread Per Request)
+Customer 1 -----> Waiter 1
+Customer 2 -----> Waiter 2
+Customer 3 -----> Waiter 3
+Customer 4 -----> Waiter 4
+Every customer gets one waiter.
+
+Problem?
+
+If 10,000 customers come,
+
+You need 10,000 waiters (threads).
+
+Very expensive.
+
+Node.js Approach
+Instead,
+
+Customer 1
+Customer 2
+Customer 3
+Customer 4
+
+       ↓
+
+   One Waiter
+(Event Loop)
+If one customer orders food,
+
+The waiter doesn't stand there waiting.
+
+He sends the order to the kitchen and starts serving another customer.
+
+Exactly what Node.js does.
+
+2. Components of Node.js
+                JavaScript Code
+                       │
+                       ▼
+                V8 JavaScript Engine
+                       │
+             Executes Synchronous Code
+                       │
+                       ▼
+                 Event Loop
+                       │
+             Uses libuv for Async Work
+                       │
+     ┌─────────────────┴────────────────┐
+     ▼                                  ▼
+ OS Kernel                      Thread Pool
+(Network)                  (File System, DNS,
+                              Crypto etc.)
+Node.js is actually made of:
+
+Your JS Code
+        ↓
+
+V8 Engine
+
+        ↓
+
+Event Loop
+
+        ↓
+
+libuv
+
+        ↓
+
+OS + Thread Pool
+3. What is V8?
+Google's JavaScript Engine.
+
+Responsibilities
+
+Parse JavaScript
+
+Compile JS
+
+Execute JS
+
+Manage memory
+
+Garbage Collection
+
+Example
+
+let a = 10;
+let b = 20;
+
+console.log(a + b);
+V8 executes this immediately.
+
+No Event Loop involved.
+
+4. Then what is the Event Loop?
+The Event Loop only handles asynchronous callbacks.
+
+It keeps checking
+
+"Is there any callback ready?"
+
+Yes?
+
+↓
+
+Execute it
+
+↓
+
+Check again
+
+↓
+
+Execute
+
+↓
+
+Repeat forever
+Hence the name
+
+Event Loop
+
+5. What is libuv?
+This is one of the most important interview questions.
+
+Node.js itself cannot perform asynchronous operations.
+
+libuv does it.
+
+libuv is a C library.
+
+Responsibilities
+
+Event Loop
+
+Thread Pool
+
+Async File System
+
+Timers
+
+TCP
+
+UDP
+
+DNS
+
+Pipes
+
+Without libuv
+
+Node.js would be synchronous.
+
+6. What Happens When You Run a JS File?
+Example
+
+console.log("Hello");
+Execution
+
+Node
+
+↓
+
+V8
+
+↓
+
+Global Execution Context
+
+↓
+
+Call Stack
+
+↓
+
+console.log()
+
+↓
+
+Print
+
+↓
+
+Finish
+7. Call Stack
+Call Stack executes synchronous code.
+
+It follows
+
+LIFO
+
+Last In First Out
+
+Example
+
+function one() {
+    two();
+}
+
+function two() {
+    three();
+}
+
+function three() {
+    console.log("Hello");
+}
+
+one();
+Call Stack
+
+Empty
+
+↓
+
+one()
+
+↓
+
+one()
+two()
+
+↓
+
+one()
+two()
+three()
+
+↓
+
+console.log()
+
+↓
+
+Pop
+
+↓
+
+three removed
+
+↓
+
+two removed
+
+↓
+
+one removed
+Always one function at a time.
+
+8. What Happens During Async Operation?
+Example
+
+console.log("A");
+
+setTimeout(() => {
+    console.log("B");
+},1000);
+
+console.log("C");
+Let's execute.
+
+Step 1
+Call Stack
+
+console.log("A")
+Output
+
+A
+Step 2
+setTimeout(...)
+Question
+
+Will timer stay inside stack?
+
+No.
+
+Instead
+
+Call Stack
+
+↓
+
+libuv
+
+↓
+
+Timer starts
+Call Stack becomes free.
+
+Step 3
+console.log("C")
+Output
+
+A
+C
+Step 4
+After 1 second
+
+Timer finishes.
+
+Does callback execute immediately?
+
+No.
+
+It goes into
+
+Timers Queue
+
+Timers Queue
+
+console.log("B")
+Step 5
+Event Loop asks
+
+Is Call Stack Empty?
+Yes.
+
+Move callback.
+
+Stack
+
+console.log("B")
+Output
+
+A
+C
+B
+Full Diagram
+console.log(A)
+
+↓
+
+Stack
+
+↓
+
+Print A
+
+↓
+
+setTimeout
+
+↓
+
+libuv Timer
+
+↓
+
+console.log(C)
+
+↓
+
+Print C
+
+↓
+
+Timer Completed
+
+↓
+
+Timer Queue
+
+↓
+
+Event Loop
+
+↓
+
+Stack
+
+↓
+
+Print B
+9. Why Doesn't setTimeout Execute Exactly After 1000ms?
+Interview Question.
+
+Most people think
+
+1000ms
+
+↓
+
+Run callback
+Wrong.
+
+Correct process
+
+1000ms
+
+↓
+
+Callback becomes READY
+
+↓
+
+Wait until stack empty
+
+↓
+
+Event Loop
+
+↓
+
+Execute
+So
+
+1000ms
+means
+
+Minimum delay.
+
+Example
+
+setTimeout(()=>console.log("Timer"),0);
+
+for(let i=0;i<10000000000;i++){}
+Output
+
+(after loop)
+
+Timer
+10. Event Loop Phases
+One complete iteration is called a Tick.
+
+ ┌──────────────────────┐
+ │ Timers               │
+ └──────────┬───────────┘
+            │
+            ▼
+ ┌──────────────────────┐
+ │ Pending Callbacks    │
+ └──────────┬───────────┘
+            │
+            ▼
+ ┌──────────────────────┐
+ │ Idle / Prepare       │
+ └──────────┬───────────┘
+            │
+            ▼
+ ┌──────────────────────┐
+ │ Poll                 │
+ └──────────┬───────────┘
+            │
+            ▼
+ ┌──────────────────────┐
+ │ Check                │
+ └──────────┬───────────┘
+            │
+            ▼
+ ┌──────────────────────┐
+ │ Close Callbacks      │
+ └──────────────────────┘
+Loop repeats forever.
+
+Phase 1 — Timers
+Runs callbacks of
+
+setTimeout()
+
+setInterval()
+Example
+
+setTimeout(()=>{
+   console.log("Timer");
+},0);
+When timer expires
+
+↓
+
+Timers Queue
+
+↓
+
+Timers Phase executes callback.
+
+Phase 2 — Pending Callbacks
+Handles some system-level callbacks that were deferred from the previous cycle, such as certain TCP errors and low-level I/O events.
+
+Most application developers rarely interact with this phase directly.
+
+Phase 3 — Idle / Prepare
+Internal phase.
+
+Node prepares for Poll phase.
+
+Not accessible to JavaScript.
+
+Phase 4 — Poll ⭐
+Most important phase.
+
+Responsible for
+
+File System callbacks
+
+Incoming network requests
+
+Reading sockets
+
+Reading files
+
+Example
+
+fs.readFile("a.txt",()=>{
+    console.log("Done");
+});
+Flow
+
+Thread Pool
+
+↓
+
+Completed
+
+↓
+
+Poll Queue
+
+↓
+
+Poll Phase
+
+↓
+
+Execute callback
+Phase 5 — Check
+Runs
+
+setImmediate()
+Example
+
+setImmediate(()=>{
+    console.log("Immediate");
+});
+Runs only in Check phase.
+
+Phase 6 — Close Callbacks
+Runs callbacks for resources that have been closed.
+
+Example
+
+socket.on("close",()=>{
+    console.log("Socket Closed");
+});
+11. What is the Poll Phase?
+The Poll phase is the heart of the Event Loop.
+
+Responsibilities:
+
+Execute completed I/O callbacks (e.g., fs.readFile, network responses).
+
+Wait for new I/O events if there is nothing else to do.
+
+Decide whether to continue waiting or move to the Check phase.
+
+Simplified flow:
+
+Completed File Read
+        │
+        ▼
+ Poll Queue
+        │
+        ▼
+ Execute callback
+If there are no callbacks:
+
+If setImmediate() callbacks are waiting, move to the Check phase.
+
+Otherwise, Node may wait for new I/O events.
+
+12. Macrotasks
+Macrotasks include
+
+setTimeout
+
+setInterval
+
+setImmediate
+
+I/O callbacks
+
+Events
+They are processed in the Event Loop phases.
+
+13. Microtasks
+Higher priority than macrotasks.
+
+Includes
+
+Promise.then()
+
+Promise.catch()
+
+queueMicrotask()
+
+process.nextTick()
+14. Priority Order
+Node.js executes work in this order:
+
+Call Stack
+
+↓
+
+process.nextTick()
+
+↓
+
+Promise Microtasks
+
+↓
+
+Event Loop Phase
+(Timers/Poll/Check...)
+process.nextTick() has even higher priority than Promise callbacks in Node.js.
+
+15. Example
+console.log("Start");
+
+setTimeout(()=>{
+    console.log("Timeout");
+},0);
+
+Promise.resolve().then(()=>{
+    console.log("Promise");
+});
+
+console.log("End");
+Execution
+
+Step 1
+Start
+Step 2
+Timer
+
+↓
+
+Timers Queue
+
+Step 3
+Promise
+
+↓
+
+Microtask Queue
+
+Step 4
+End
+Call Stack empty.
+
+Run microtasks first:
+
+Promise
+Then continue with the Event Loop:
+
+Timeout
+Final Output
+
+Start
+End
+Promise
+Timeout
+16. process.nextTick() Example
+console.log("Start");
+
+process.nextTick(() => {
+    console.log("nextTick");
+});
+
+Promise.resolve().then(() => {
+    console.log("Promise");
+});
+
+setTimeout(() => {
+    console.log("Timeout");
+}, 0);
+
+console.log("End");
+Execution order:
+
+Start
+
+End
+
+nextTick
+
+Promise
+
+Timeout
+
+Output:
+
+Start
+End
+nextTick
+Promise
+Timeout
+17. setTimeout() vs setImmediate()
+setTimeout(() => console.log("Timeout"), 0);
+setImmediate(() => console.log("Immediate"));
+If scheduled from top-level code, the order is not guaranteed and can vary depending on timing.
+
+However, inside an I/O callback:
+
+const fs = require("fs");
+
+fs.readFile(__filename, () => {
+    setTimeout(() => console.log("Timeout"), 0);
+    setImmediate(() => console.log("Immediate"));
+});
+Output is consistently:
+
+Immediate
+Timeout
+Why? After the Poll phase finishes processing the I/O callback, the Event Loop immediately enters the Check phase (where setImmediate() runs) before starting the next iteration's Timers phase.
+
+18. Complete Architecture
+                JavaScript Code
+                       │
+                       ▼
+                 V8 Engine
+                       │
+                       ▼
+                  Call Stack
+                       │
+       ┌───────────────┴───────────────┐
+       │                               │
+       ▼                               ▼
+ Synchronous Code                Async APIs
+                                      │
+                                      ▼
+                                   libuv
+                    ┌───────────────┴───────────────┐
+                    ▼                               ▼
+                OS Kernel                      Thread Pool
+              (network, sockets)        (fs, crypto, DNS, zlib)
+                    │                               │
+                    └───────────────┬───────────────┘
+                                    ▼
+                           Event Loop Phases
+                                    │
+                                    ▼
+                             Execute Callback
+Interview Summary (Remember These Points)
+V8 executes synchronous JavaScript.
+
+Call Stack runs synchronous code using the LIFO principle.
+
+libuv provides the Event Loop, async I/O, and the thread pool.
+
+The OS kernel handles many networking operations; the thread pool handles tasks like file system access, DNS lookups (when needed), crypto, and compression.
+
+The Event Loop repeatedly checks its phases and executes ready callbacks.
+
+Timers specify the earliest time a callback can run—they do not guarantee exact execution time.
+
+Microtasks (process.nextTick, Promises, queueMicrotask) always run after the current JavaScript execution finishes and before the Event Loop proceeds to the next macrotask.
+
+process.nextTick() has higher priority than Promise microtasks in Node.js.
+
+setImmediate() runs during the Check phase, while setTimeout() runs during the Timers phase.
+
+The Poll phase is the core of the Event Loop, where completed I/O callbacks are processed and decisions are made about whether to wait for more I/O or continue to the next phase.
+
+Mastering these concepts will let you reason accurately about execution order and answer most Node.js Event Loop interview questions with confidence.
+
+
+give me the full code to pridict output and 
+add fs, process.nextTick() , queueMicro etc  everything
+
+If you want to master the Event Loop, don't practice tiny examples. Practice one big example that contains almost everything.
+
+This single code covers:
+
+✅ Synchronous code
+
+✅ Call Stack
+
+✅ process.nextTick()
+
+✅ queueMicrotask()
+
+✅ Promise.then()
+
+✅ Nested Promises
+
+✅ setTimeout()
+
+✅ Nested setTimeout()
+
+✅ setImmediate()
+
+✅ fs.readFile()
+
+✅ process.nextTick() inside fs
+
+✅ Promise inside fs
+
+✅ setImmediate() inside fs
+
+✅ setTimeout() inside fs
+
+Complete Event Loop Practice Code
+const fs = require("fs");
+
+console.log("1. Script Start");
+
+// ---------------------------
+// process.nextTick
+// ---------------------------
+process.nextTick(() => {
+    console.log("2. process.nextTick 1");
+});
+
+process.nextTick(() => {
+    console.log("3. process.nextTick 2");
+
+    process.nextTick(() => {
+        console.log("4. nested process.nextTick");
+    });
+});
+
+// ---------------------------
+// queueMicrotask
+// ---------------------------
+queueMicrotask(() => {
+    console.log("5. queueMicrotask");
+});
+
+// ---------------------------
+// Promise
+// ---------------------------
+Promise.resolve()
+    .then(() => {
+        console.log("6. Promise 1");
+
+        return Promise.resolve();
+    })
+    .then(() => {
+        console.log("7. Promise 2");
+    });
+
+// ---------------------------
+// Timers
+// ---------------------------
+setTimeout(() => {
+    console.log("8. setTimeout 1");
+
+    process.nextTick(() => {
+        console.log("9. nextTick inside Timeout");
+    });
+
+    Promise.resolve().then(() => {
+        console.log("10. Promise inside Timeout");
+    });
+
+    queueMicrotask(() => {
+        console.log("11. queueMicrotask inside Timeout");
+    });
+
+}, 0);
+
+// ---------------------------
+// Another Timer
+// ---------------------------
+setTimeout(() => {
+    console.log("12. setTimeout 2");
+}, 0);
+
+// ---------------------------
+// Immediate
+// ---------------------------
+setImmediate(() => {
+    console.log("13. setImmediate 1");
+
+    process.nextTick(() => {
+        console.log("14. nextTick inside Immediate");
+    });
+
+    Promise.resolve().then(() => {
+        console.log("15. Promise inside Immediate");
+    });
+
+});
+
+// ---------------------------
+// File System
+// ---------------------------
+fs.readFile(__filename, () => {
+
+    console.log("16. fs.readFile Callback");
+
+    process.nextTick(() => {
+        console.log("17. nextTick inside fs");
+    });
+
+    Promise.resolve().then(() => {
+        console.log("18. Promise inside fs");
+    });
+
+    queueMicrotask(() => {
+        console.log("19. queueMicrotask inside fs");
+    });
+
+    setImmediate(() => {
+        console.log("20. Immediate inside fs");
+    });
+
+    setTimeout(() => {
+        console.log("21. Timeout inside fs");
+    }, 0);
+
+});
+
+// ---------------------------
+
+console.log("22. Script End");
+Now Predict the Output Yourself
+Don't scroll further.
+
+Seriously.
+
+Try first.
+
+👇
+
+👇
+
+👇
+
+👇
+
+👇
+
+👇
+
+👇
+
+👇
+
+👇
+
+Expected Output (Typical)
+1. Script Start
+22. Script End
+
+2. process.nextTick 1
+3. process.nextTick 2
+4. nested process.nextTick
+
+5. queueMicrotask
+6. Promise 1
+7. Promise 2
+
+8. setTimeout 1
+9. nextTick inside Timeout
+10. Promise inside Timeout
+11. queueMicrotask inside Timeout
+
+12. setTimeout 2
+
+13. setImmediate 1
+14. nextTick inside Immediate
+15. Promise inside Immediate
+
+16. fs.readFile Callback
+17. nextTick inside fs
+18. Promise inside fs
+19. queueMicrotask inside fs
+20. Immediate inside fs
+21. Timeout inside fs
+Note: The relative order of top-level setTimeout(..., 0) and setImmediate() is not guaranteed. On many systems you'll see the output above, but sometimes setImmediate may appear before the timers. The order inside the fs.readFile callback (Immediate inside fs before Timeout inside fs) is consistent.
+
+What this tests
+Concept	Included
+Call Stack	✅
+process.nextTick	✅
+queueMicrotask	✅
+Promise.then	✅
+Nested Promise	✅
+Timers Phase	✅
+Check Phase	✅
+Poll Phase	✅
+File System (libuv Thread Pool)	✅
+Microtasks after every callback	✅
+Nested nextTick	✅
+Nested Microtasks	✅
+Nested Timers	✅
+Even Harder Interview Question 🔥
+Try predicting this one without running it:
+
+const fs = require("fs");
+
+console.log("A");
+
+setTimeout(() => console.log("B"), 0);
+
+setImmediate(() => console.log("C"));
+
+Promise.resolve()
+    .then(() => {
+        console.log("D");
+
+        process.nextTick(() => {
+            console.log("E");
+        });
+
+        queueMicrotask(() => {
+            console.log("F");
+        });
+
+        Promise.resolve().then(() => {
+            console.log("G");
+        });
+    });
+
+process.nextTick(() => {
+    console.log("H");
+});
+
+fs.readFile(__filename, () => {
+
+    console.log("I");
+
+    process.nextTick(() => console.log("J"));
+
+    Promise.resolve().then(() => console.log("K"));
+
+    setImmediate(() => console.log("L"));
+
+    setTimeout(() => console.log("M"), 0);
+
+});
+
+console.log("N");
+This example combines every major Event Loop concept and is very close to the kind of execution-order questions asked in senior Node.js interviews. Try predicting the output before running it—you'll quickly discover which parts of the Event Loop you truly understand.
+
+
+SetImmediate vs settimeout ?
+
+This is one of the most frequently asked Node.js interview questions.
+
+The tricky part is that sometimes they execute in different orders.
+
+Let's understand it from the basics.
+
+What is setTimeout()?
+setTimeout() schedules a callback to run after at least the specified delay.
+
+setTimeout(() => {
+    console.log("Timeout");
+}, 1000);
+It means:
+
+Run this callback after at least 1000 ms.
+
+It does not guarantee it will run exactly after 1000 ms.
+
+Which Event Loop Phase?
+setTimeout() callbacks execute in the Timers phase.
+
+Timers
+   ↓
+Pending Callbacks
+   ↓
+Idle/Prepare
+   ↓
+Poll
+   ↓
+Check
+   ↓
+Close
+What is setImmediate()?
+setImmediate() schedules a callback to run during the Check phase.
+
+setImmediate(() => {
+    console.log("Immediate");
+});
+It does not use the Timers phase.
+
+It always waits until the Event Loop reaches the Check phase.
+
+Event Loop Phases
+┌──────────────┐
+│ Timers       │ ← setTimeout
+└──────┬───────┘
+       │
+       ▼
+┌──────────────┐
+│ Pending      │
+└──────┬───────┘
+       │
+       ▼
+┌──────────────┐
+│ Idle         │
+└──────┬───────┘
+       │
+       ▼
+┌──────────────┐
+│ Poll         │
+└──────┬───────┘
+       │
+       ▼
+┌──────────────┐
+│ Check        │ ← setImmediate
+└──────┬───────┘
+       │
+       ▼
+Close
+Example 1
+setTimeout(() => {
+    console.log("Timeout");
+}, 0);
+
+setImmediate(() => {
+    console.log("Immediate");
+});
+Output?
+It is not guaranteed.
+
+Sometimes
+
+Timeout
+Immediate
+Sometimes
+
+Immediate
+Timeout
+Why?
+When your script finishes executing, Node decides how to enter the Event Loop.
+
+Depending on timing and the platform:
+
+it may enter the Timers phase first, or
+
+it may reach the Check phase after the Poll phase.
+
+So the order is non-deterministic for top-level code.
+
+Example 2 (Inside I/O)
+const fs = require("fs");
+
+fs.readFile(__filename, () => {
+
+    setTimeout(() => {
+        console.log("Timeout");
+    }, 0);
+
+    setImmediate(() => {
+        console.log("Immediate");
+    });
+
+});
+Output
+Immediate
+Timeout
+Always.
+
+Why?
+Let's follow the Event Loop.
+
+Step 1
+The file is read asynchronously.
+
+Thread Pool
+
+↓
+
+File Read Complete
+
+↓
+
+Poll Queue
+Step 2
+The Event Loop enters the Poll phase.
+
+Poll Phase
+
+↓
+
+Run fs.readFile callback
+Inside the callback you schedule:
+
+setTimeout(...)
+setImmediate(...)
+Now:
+
+Timers Queue
+    Timeout
+
+Check Queue
+    Immediate
+Step 3
+The fs.readFile callback finishes.
+
+The Poll phase has no more callbacks.
+
+The Event Loop now moves to the Check phase.
+
+Poll
+
+↓
+
+Check
+The Check phase executes:
+
+Immediate
+Step 4
+After the Check phase finishes, the Event Loop starts the next iteration.
+
+Timers
+
+↓
+
+Timeout
+So the output is always:
+
+Immediate
+Timeout
+Timeline
+fs callback starts
+
+↓
+
+setTimeout()
+
+↓
+
+setImmediate()
+
+↓
+
+callback ends
+
+↓
+
+Poll phase finished
+
+↓
+
+Check phase
+
+↓
+
+Immediate
+
+↓
+
+Next Event Loop iteration
+
+↓
+
+Timers phase
+
+↓
+
+Timeout
+Why doesn't setTimeout(0) execute immediately?
+Many people think:
+
+0 ms
+
+↓
+
+Execute
+Wrong.
+
+It means:
+
+0 ms elapsed
+
+↓
+
+Callback becomes eligible
+
+↓
+
+Wait until Timers phase
+
+↓
+
+Execute when the Call Stack is empty
+So 0 means minimum delay, not "run instantly."
+
+Real Comparison
+Feature	setTimeout	setImmediate
+Event Loop Phase	Timers	Check
+Delay	Minimum specified delay	Next Check phase
+Top-level execution order	Not guaranteed relative to setImmediate	Not guaranteed relative to setTimeout
+Inside I/O callback	Usually after setImmediate	Usually before setTimeout
+Browser support	✅ Yes	❌ No (Node.js only)
+Interview Question
+const fs = require("fs");
+
+console.log("Start");
+
+fs.readFile(__filename, () => {
+
+    console.log("File");
+
+    setTimeout(() => {
+        console.log("Timeout");
+    }, 0);
+
+    setImmediate(() => {
+        console.log("Immediate");
+    });
+
+});
+
+console.log("End");
+Output
+Start
+End
+File
+Immediate
+Timeout
+When should you use which?
+Use setTimeout()
+Delay execution by a certain amount of time.
+
+Retry logic.
+
+Debouncing or throttling.
+
+Scheduling periodic work (with setInterval).
+
+Example:
+
+setTimeout(() => {
+    console.log("Show notification after 5 seconds");
+}, 5000);
+Use setImmediate()
+Run code after the current I/O cycle.
+
+Break up long synchronous work into smaller chunks.
+
+Schedule follow-up work after I/O callbacks.
+
+Example:
+
+fs.readFile("data.txt", () => {
+    console.log("File loaded");
+
+    setImmediate(() => {
+        console.log("Process the file");
+    });
+});
+Interview takeaway
+setTimeout() runs in the Timers phase after the specified minimum delay.
+
+setImmediate() runs in the Check phase.
+
+At the top level, the order between them is not guaranteed.
+
+Inside an I/O callback (such as fs.readFile()), setImmediate() reliably executes before setTimeout(..., 0) because the Event Loop moves from the Poll phase directly to the Check phase before starting the next Timers phase.
+
+
+process.nexttick vs promises vs queuetask 
+
+This is probably the #1 Node.js interview question after the Event Loop.
+
+The execution priority is:
+
+Call Stack
+      ↓
+process.nextTick()
+      ↓
+Promise.then() & queueMicrotask()
+      ↓
+Macrotasks (setTimeout, setImmediate, I/O)
+Let's understand why.
+
+1. Three Different Queues
+Node.js actually has three important queues after the Call Stack.
+
+                Call Stack
+                     │
+          (runs synchronous code)
+                     │
+        Stack becomes empty
+                     │
+                     ▼
+        +----------------------+
+        | process.nextTick()   |   Highest Priority
+        +----------------------+
+                     │
+                     ▼
+        +----------------------+
+        | Promise Queue        |
+        | queueMicrotask()     |
+        +----------------------+
+                     │
+                     ▼
+        +----------------------+
+        | Event Loop           |
+        | Timers               |
+        | Poll                 |
+        | Check                |
+        +----------------------+
+2. process.nextTick()
+Node created this API before JavaScript had Promises.
+
+It is not part of the Event Loop.
+
+It has its own queue called the Next Tick Queue.
+
+Example
+
+console.log("Start");
+
+process.nextTick(() => {
+    console.log("nextTick");
+});
+
+console.log("End");
+Output
+
+Start
+End
+nextTick
+Execution
+
+Call Stack
+
+console.log(Start)
+
+↓
+
+process.nextTick()
+
+↓
+
+Added to NextTick Queue
+
+↓
+
+console.log(End)
+
+↓
+
+Stack Empty
+
+↓
+
+Run NextTick Queue
+3. Promise
+Promises use the Microtask Queue.
+
+console.log("Start");
+
+Promise.resolve().then(() => {
+    console.log("Promise");
+});
+
+console.log("End");
+Output
+
+Start
+End
+Promise
+Execution
+
+Call Stack
+
+↓
+
+Promise callback
+
+↓
+
+Microtask Queue
+
+↓
+
+Stack Empty
+
+↓
+
+Run Microtask Queue
+4. queueMicrotask()
+This API also adds work to the Microtask Queue.
+
+console.log("Start");
+
+queueMicrotask(() => {
+    console.log("Microtask");
+});
+
+console.log("End");
+Output
+
+Start
+End
+Microtask
+It uses exactly the same queue as Promise callbacks.
+
+5. process.nextTick() vs Promise
+Example
+
+console.log("Start");
+
+Promise.resolve().then(() => {
+    console.log("Promise");
+});
+
+process.nextTick(() => {
+    console.log("nextTick");
+});
+
+console.log("End");
+Output
+
+Start
+End
+nextTick
+Promise
+Why?
+
+Node first empties the Next Tick Queue, then the Microtask Queue.
+
+Execution
+
+Stack Empty
+
+↓
+
+Next Tick Queue
+
+↓
+
+Promise Queue
+6. Promise vs queueMicrotask()
+console.log("Start");
+
+Promise.resolve().then(() => {
+    console.log("Promise");
+});
+
+queueMicrotask(() => {
+    console.log("Microtask");
+});
+
+console.log("End");
+Output
+
+Start
+End
+Promise
+Microtask
+Why?
+
+Because they use the same queue.
+
+The queue is FIFO (First In, First Out).
+
+Promise was added first.
+
+Then queueMicrotask().
+
+So Promise executes first.
+
+If you reverse them:
+
+queueMicrotask(() => console.log("Microtask"));
+
+Promise.resolve().then(() => console.log("Promise"));
+Output
+
+Microtask
+Promise
+7. All Three Together
+console.log("Start");
+
+process.nextTick(() => {
+    console.log("nextTick");
+});
+
+Promise.resolve().then(() => {
+    console.log("Promise");
+});
+
+queueMicrotask(() => {
+    console.log("Microtask");
+});
+
+console.log("End");
+Output
+
+Start
+End
+nextTick
+Promise
+Microtask
+Execution
+
+Call Stack
+
+↓
+
+Start
+
+↓
+
+nextTick Queue
+
+↓
+
+Promise Queue
+
+↓
+
+queueMicrotask Queue
+(same queue)
+
+↓
+
+End
+
+↓
+
+Stack Empty
+
+↓
+
+Run nextTick
+
+↓
+
+Run Promise
+
+↓
+
+Run queueMicrotask
+8. Nested Example
+console.log("Start");
+
+Promise.resolve().then(() => {
+
+    console.log("Promise");
+
+    process.nextTick(() => {
+        console.log("nextTick");
+    });
+
+});
+
+console.log("End");
+Output
+
+Start
+End
+Promise
+nextTick
+Why?
+
+Execution:
+
+The stack finishes.
+
+Node drains the current process.nextTick() queue (it's empty).
+
+Node starts draining the Promise microtask queue.
+
+The Promise callback runs and schedules a process.nextTick().
+
+After that Promise callback finishes, Node checks the process.nextTick() queue again before continuing to other work, so nextTick runs immediately.
+
+9. Very Tricky Interview Question
+console.log("Start");
+
+process.nextTick(() => {
+    console.log("A");
+
+    process.nextTick(() => {
+        console.log("B");
+    });
+});
+
+Promise.resolve().then(() => {
+    console.log("C");
+});
+
+console.log("End");
+Output
+
+Start
+End
+A
+B
+C
+Why?
+
+The process.nextTick() queue is completely drained before Node processes Promise microtasks.
+
+Stack Empty
+
+↓
+
+nextTick Queue
+
+A
+
+↓
+
+new nextTick added
+
+↓
+
+Run B
+
+↓
+
+Queue Empty
+
+↓
+
+Promise Queue
+
+C
+10. Can process.nextTick() Starve the Event Loop?
+Yes.
+
+Example
+
+function loop() {
+    process.nextTick(loop);
+}
+
+loop();
+
+setTimeout(() => {
+    console.log("Never runs");
+}, 0);
+The output is:
+
+Nothing from setTimeout
+Why?
+
+The process.nextTick() queue keeps filling itself.
+
+Node never gets a chance to continue to the Event Loop phases (Timers, Poll, Check, etc.).
+
+This is called Event Loop starvation.
+
+11. Summary Table
+Feature	process.nextTick()	Promise.then()	queueMicrotask()
+Queue	Next Tick Queue	Microtask Queue	Microtask Queue
+Part of ECMAScript?	❌ No (Node.js only)	✅ Yes	✅ Yes
+Browser Support	❌ No	✅ Yes	✅ Yes
+Priority	Highest	After nextTick	Same as Promise
+Queue Type	Separate queue	Shared FIFO queue	Shared FIFO queue
+Can starve the Event Loop?	✅ Yes	Rarely	Rarely
+Interview Rule to Remember
+1. Execute synchronous code (Call Stack)
+
+↓
+
+2. Drain the process.nextTick() queue
+
+↓
+
+3. Drain the Microtask Queue
+   (Promise.then, catch, finally, queueMicrotask)
+
+↓
+
+4. Continue to the Event Loop
+   (Timers → Pending Callbacks → Poll → Check → Close)
+Which should you use?
+process.nextTick(): Use sparingly for Node.js-specific APIs where something must run immediately after the current operation, before the Event Loop continues.
+
+Promise.then() / async-await: The standard choice for asynchronous JavaScript.
+
+queueMicrotask(): Use when you want to schedule a microtask without creating a Promise. It has the same priority as Promise callbacks and is a lightweight, standards-based API.
+
+
+all vs file system i/0
+
+This is another very common Node.js interview topic.
+
+People often hear that "Node.js is single-threaded", but then see fs.readFile() running asynchronously and get confused.
+
+Let's understand all async operations vs File System I/O.
+
+Node.js Architecture
+                 JavaScript
+                      │
+                      ▼
+                 Call Stack
+                      │
+                      ▼
+                   libuv
+          ┌───────────┴───────────┐
+          │                       │
+          ▼                       ▼
+      OS Kernel              Thread Pool
+The important question is:
+
+Does this async operation go to the OS Kernel or the libuv Thread Pool?
+
+Async APIs Classification
+API	Uses OS Kernel	Uses libuv Thread Pool
+fs.readFile()	❌	✅
+fs.writeFile()	❌	✅
+crypto.pbkdf2()	❌	✅
+zlib.gzip()	❌	✅
+dns.lookup()	❌	✅
+HTTP Server	✅	❌
+Express Request	✅	❌
+TCP Socket	✅	❌
+UDP Socket	✅	❌
+Timers	❌	❌ (managed by libuv's timer system)
+Why doesn't fs.readFile() use the OS directly?
+Suppose you write:
+
+const fs = require("fs");
+
+fs.readFile("data.txt", () => {
+    console.log("Done");
+});
+Reading a file is often a blocking operation.
+
+If Node called the operating system synchronously,
+
+Node
+
+↓
+
+Wait
+
+↓
+
+Wait
+
+↓
+
+Wait
+
+↓
+
+Read File
+
+↓
+
+Continue
+Everything would freeze.
+
+Instead,
+
+Node sends the work to the libuv Thread Pool.
+
+JavaScript
+
+↓
+
+libuv
+
+↓
+
+Worker Thread
+
+↓
+
+Read File
+
+↓
+
+Callback
+
+↓
+
+Event Loop
+Your main thread stays free to handle other requests.
+
+Thread Pool
+libuv creates worker threads.
+
+Default size:
+
+4 Threads
+You can change it before starting Node:
+
+UV_THREADPOOL_SIZE=8 node app.js
+Maximum supported:
+
+128
+Example
+const fs = require("fs");
+
+console.log("Start");
+
+fs.readFile("big.txt", () => {
+    console.log("Finished");
+});
+
+console.log("End");
+Execution
+
+Main Thread
+
+Start
+
+↓
+
+Send file read to Thread Pool
+
+↓
+
+End
+
+↓
+
+Main thread is FREE
+
+↓
+
+Worker thread finishes
+
+↓
+
+Poll Queue
+
+↓
+
+Event Loop
+
+↓
+
+Finished
+Output
+
+Start
+End
+Finished
+What happens inside libuv?
+fs.readFile()
+
+↓
+
+libuv
+
+↓
+
+Worker Thread
+
+↓
+
+Read File
+
+↓
+
+Completed
+
+↓
+
+Poll Queue
+
+↓
+
+Event Loop
+
+↓
+
+Callback
+HTTP Request
+Now compare this:
+
+const http = require("http");
+
+http.createServer((req, res) => {
+
+    res.end("Hello");
+
+});
+No Thread Pool.
+
+Instead
+
+Browser
+
+↓
+
+OS Network Stack
+
+↓
+
+Kernel
+
+↓
+
+Socket Ready
+
+↓
+
+Event Loop
+
+↓
+
+Callback
+The operating system already knows when network sockets are ready (using mechanisms like epoll, kqueue, or IOCP depending on the platform), so Node doesn't need worker threads for normal network I/O.
+
+Why?
+Network sockets are event-driven.
+
+The operating system tells Node
+
+Socket Ready
+
+↓
+
+Receive Request
+
+↓
+
+Event Loop
+
+↓
+
+Execute callback
+No worker thread needed.
+
+File System vs HTTP
+File System
+JavaScript
+
+↓
+
+libuv
+
+↓
+
+Thread Pool
+
+↓
+
+Read File
+
+↓
+
+Poll Queue
+
+↓
+
+Event Loop
+HTTP
+Browser
+
+↓
+
+OS Kernel
+
+↓
+
+Socket Ready
+
+↓
+
+Poll Queue
+
+↓
+
+Event Loop
+Crypto
+const crypto = require("crypto");
+
+crypto.pbkdf2(...)
+Flow
+
+JavaScript
+
+↓
+
+Thread Pool
+
+↓
+
+CPU Work
+
+↓
+
+Callback
+
+↓
+
+Event Loop
+Reason
+
+Password hashing is CPU intensive.
+
+zlib
+zlib.gzip(...)
+Flow
+
+JavaScript
+
+↓
+
+Thread Pool
+
+↓
+
+Compression
+
+↓
+
+Callback
+DNS
+dns.lookup(...)
+Uses
+
+Thread Pool
+Timers
+setTimeout(() => {
+
+},1000);
+Many developers think
+
+Thread
+
+↓
+
+Sleep
+
+↓
+
+Wake
+Wrong.
+
+No thread sleeps.
+
+Instead
+
+libuv Timer Heap
+
+↓
+
+1 second passed
+
+↓
+
+Timers Queue
+
+↓
+
+Event Loop
+Timers are managed efficiently inside libuv and don't consume a worker thread while waiting.
+
+Which APIs use the Thread Pool?
+✔ fs
+
+✔ crypto
+
+✔ zlib
+
+✔ dns.lookup
+Which APIs use the OS Kernel?
+✔ HTTP
+
+✔ HTTPS
+
+✔ Express
+
+✔ TCP
+
+✔ UDP
+
+✔ Socket.io
+
+✔ Net module
+Complete Flow
+                    JavaScript
+
+                         │
+
+                  Async Operation?
+
+          ┌──────────────┴──────────────┐
+
+          │                             │
+
+     File System                  Network
+
+          │                             │
+
+          ▼                             ▼
+
+    Thread Pool                    OS Kernel
+
+          │                             │
+
+          ▼                             ▼
+
+      Completed                    Socket Ready
+
+          │                             │
+
+          └──────────────┬──────────────┘
+
+                         ▼
+
+                     Poll Queue
+
+                         ▼
+
+                     Event Loop
+
+                         ▼
+
+                    Execute Callback
+Interview Cheat Sheet
+Operation	Thread Pool	OS Kernel
+fs.readFile()	✅	❌
+fs.writeFile()	✅	❌
+crypto.pbkdf2()	✅	❌
+zlib.gzip()	✅	❌
+dns.lookup()	✅	❌
+HTTP Server	❌	✅
+Express Request	❌	✅
+Socket.io	❌	✅
+TCP	❌	✅
+UDP	❌	✅
+setTimeout()	❌	❌ (handled by libuv timers)
+setImmediate()	❌	❌ (Event Loop Check phase)
+Promise.then()	❌	❌ (Microtask Queue)
+process.nextTick()	❌	❌ (Next Tick Queue)
+One interview tip
+A common misconception is that all asynchronous operations use the libuv thread pool. They don't.
+
+File system operations, crypto, compression, and some DNS work use the libuv thread pool because they may block.
+
+Network I/O (HTTP, TCP, sockets, Express) is typically handled by the operating system's asynchronous I/O facilities, and libuv is notified when those events are ready.
+
+Promises, process.nextTick(), queueMicrotask(), setTimeout(), and setImmediate() don't use the thread pool—they're scheduled and executed by the JavaScript runtime and the Event Loop.
+
+
+Promises, process.nextTick(), queueMicrotask(), setTimeout(), and setImmediate()  
+vs filesystem 
+
+This is the most important distinction in Node.js.
+
+Many people think everything asynchronous goes to libuv or the thread pool.
+
+❌ That's not true.
+
+These APIs fall into two completely different categories.
+
+Category 1: Scheduling APIs (No Background Work)
+These APIs do not perform any actual work.
+
+They simply tell Node.js:
+
+"Run this callback later."
+
+These include:
+
+process.nextTick()
+
+Promise.then()
+
+queueMicrotask()
+
+setTimeout()
+
+setImmediate()
+
+Nothing is sent to a thread.
+
+Nothing is sent to the OS.
+
+Nothing is read or written.
+
+They are just scheduled.
+
+Example 1: Promise
+console.log("Start");
+
+Promise.resolve().then(() => {
+    console.log("Promise");
+});
+
+console.log("End");
+Flow
+
+JavaScript
+
+↓
+
+Call Stack
+
+↓
+
+Promise Queue (Microtask)
+
+↓
+
+Call Stack Empty
+
+↓
+
+Execute callback
+No thread.
+
+No file.
+
+No network.
+
+No libuv thread pool.
+
+Example 2: process.nextTick()
+process.nextTick(() => {
+    console.log("nextTick");
+});
+Flow
+
+JavaScript
+
+↓
+
+NextTick Queue
+
+↓
+
+Stack Empty
+
+↓
+
+Execute callback
+Again
+
+No thread.
+
+Example 3: queueMicrotask()
+queueMicrotask(() => {
+    console.log("Microtask");
+});
+Flow
+
+JavaScript
+
+↓
+
+Microtask Queue
+
+↓
+
+Execute callback
+Still
+
+No thread.
+
+Example 4: setTimeout()
+setTimeout(() => {
+    console.log("Timer");
+}, 1000);
+People imagine
+
+Thread sleeping
+
+↓
+
+1 second
+
+↓
+
+Wake up
+❌ Wrong.
+
+Actual flow
+
+JavaScript
+
+↓
+
+libuv Timer System
+
+↓
+
+1000 ms elapsed
+
+↓
+
+Timers Queue
+
+↓
+
+Event Loop
+
+↓
+
+Execute callback
+No worker thread sleeps for 1 second.
+
+Example 5: setImmediate()
+setImmediate(() => {
+    console.log("Immediate");
+});
+Flow
+
+JavaScript
+
+↓
+
+Check Queue
+
+↓
+
+Check Phase
+
+↓
+
+Execute callback
+Again
+
+No thread.
+
+Category 2: Actual Work (Background Operations)
+Now look at this.
+
+const fs = require("fs");
+
+fs.readFile("test.txt", () => {
+    console.log("Done");
+});
+This is completely different.
+
+Node cannot instantly read a file.
+
+Reading takes time.
+
+Node cannot block JavaScript.
+
+So Node gives the work to libuv.
+
+Flow
+
+JavaScript
+
+↓
+
+libuv
+
+↓
+
+Worker Thread
+
+↓
+
+Read File
+
+↓
+
+Completed
+
+↓
+
+Poll Queue
+
+↓
+
+Event Loop
+
+↓
+
+Callback
+Here, real work happens in the background.
+
+Visual Comparison
+Promise
+Promise.then()
+
+↓
+
+Microtask Queue
+
+↓
+
+Execute
+No background work.
+
+process.nextTick
+nextTick()
+
+↓
+
+Next Tick Queue
+
+↓
+
+Execute
+No background work.
+
+setTimeout
+setTimeout()
+
+↓
+
+Timer Heap (libuv)
+
+↓
+
+Timers Queue
+
+↓
+
+Execute
+No background work.
+
+setImmediate
+setImmediate()
+
+↓
+
+Check Queue
+
+↓
+
+Execute
+No background work.
+
+fs.readFile
+fs.readFile()
+
+↓
+
+libuv Thread Pool
+
+↓
+
+Read File
+
+↓
+
+Poll Queue
+
+↓
+
+Execute callback
+Actual work happens.
+
+Bigger Picture
+                    JavaScript
+
+                         │
+
+            Is background work needed?
+
+               /                    \
+
+             NO                      YES
+
+             │                        │
+
+             ▼                        ▼
+
+      Scheduling APIs            Worker Thread
+
+ process.nextTick()             fs.readFile()
+
+ Promise.then()                 crypto.pbkdf2()
+
+ queueMicrotask()               zlib.gzip()
+
+ setTimeout()                   dns.lookup()
+
+ setImmediate()
+
+             │                        │
+
+             ▼                        ▼
+
+       Event Loop Queues       Thread Pool
+
+             │                        │
+
+             └──────────────┬─────────┘
+
+                            ▼
+
+                       Execute Callback
+Why does Promise not need a thread?
+Promise.resolve().then(() => {
+    console.log("Hello");
+});
+Nothing is being calculated.
+
+Nothing is being downloaded.
+
+Nothing is being read.
+
+Node simply stores
+
+Callback
+
+↓
+
+Microtask Queue
+That's all.
+
+Why does fs.readFile need a thread?
+fs.readFile("movie.mp4");
+Node must
+
+Open the file
+
+Read disk blocks
+
+Copy bytes
+
+Close the file
+
+This can take milliseconds or much longer.
+
+If JavaScript waited,
+
+Everything would freeze.
+
+So
+
+JavaScript
+
+↓
+
+Worker Thread
+
+↓
+
+Read File
+
+↓
+
+Return callback
+Interview Table
+API	Background Work?	Thread Pool?	Queue Used
+process.nextTick()	❌ No	❌ No	Next Tick Queue
+Promise.then()	❌ No	❌ No	Microtask Queue
+queueMicrotask()	❌ No	❌ No	Microtask Queue
+setTimeout()	❌ No (just schedules a timer)	❌ No	Timers Queue
+setImmediate()	❌ No	❌ No	Check Queue
+fs.readFile()	✅ Yes (disk I/O)	✅ Yes	Poll Queue (after work completes)
+crypto.pbkdf2()	✅ Yes (CPU-intensive)	✅ Yes	Poll Queue
+zlib.gzip()	✅ Yes (compression)	✅ Yes	Poll Queue
+Easy Rule to Remember
+Ask yourself one question:
+
+"Does this API need to do real work that takes time?"
+
+No → It just schedules a callback (process.nextTick, Promise.then, queueMicrotask, setTimeout, setImmediate).
+
+Yes → Node delegates the work (often to the libuv thread pool for file system, crypto, compression, etc.). When that work finishes, the callback is queued for the Event Loop to execute.
+
+That's the key conceptual difference interviewers are looking for.
+
+
+so which will run first 
+
+Excellent question.
+
+The answer depends on what you're comparing.
+
+Let's compare everything together.
+
+Example 1 (Everything Together)
+const fs = require("fs");
+
+console.log("1");
+
+process.nextTick(() => {
+    console.log("2 nextTick");
+});
+
+Promise.resolve().then(() => {
+    console.log("3 Promise");
+});
+
+queueMicrotask(() => {
+    console.log("4 queueMicrotask");
+});
+
+setTimeout(() => {
+    console.log("5 setTimeout");
+}, 0);
+
+setImmediate(() => {
+    console.log("6 setImmediate");
+});
+
+fs.readFile(__filename, () => {
+    console.log("7 fs.readFile");
+});
+
+console.log("8");
+Step 1: Synchronous Code (Call Stack)
+console.log("1")
+
+↓
+
+console.log("8")
+Output
+
+1
+8
+Step 2: process.nextTick()
+Node always empties the Next Tick Queue first.
+
+Output
+
+1
+8
+2 nextTick
+Step 3: Microtasks
+Now Node executes the Microtask Queue.
+
+Since Promise.then() was added before queueMicrotask():
+
+Output
+
+1
+8
+2 nextTick
+3 Promise
+4 queueMicrotask
+Step 4: Event Loop Starts
+Now Node enters the Event Loop.
+
+Timers Phase
+setTimeout(...)
+Output
+
+5 setTimeout
+Poll Phase
+If fs.readFile() has already finished, its callback runs here:
+
+7 fs.readFile
+If the file is not ready yet, the callback waits for a later Event Loop iteration.
+
+Check Phase
+setImmediate(...)
+Output
+
+6 setImmediate
+Possible Output 1
+1
+8
+2 nextTick
+3 Promise
+4 queueMicrotask
+5 setTimeout
+7 fs.readFile
+6 setImmediate
+Possible Output 2
+1
+8
+2 nextTick
+3 Promise
+4 queueMicrotask
+5 setTimeout
+6 setImmediate
+7 fs.readFile
+Both are possible because the file read may or may not have completed by the time the Event Loop reaches the Poll phase.
+
+The Guaranteed Priority
+Ignoring actual I/O completion time, the priority is:
+
+Call Stack
+
+↓
+
+process.nextTick()
+
+↓
+
+Promise.then()
+
+↓
+
+queueMicrotask()
+
+↓
+
+setTimeout()
+
+↓
+
+I/O Callback (when ready)
+
+↓
+
+setImmediate()
+Note: Promise.then() and queueMicrotask() share the same microtask queue. Between them, whichever is queued first runs first.
+
+But Inside fs.readFile()
+const fs = require("fs");
+
+fs.readFile(__filename, () => {
+
+    console.log("FS");
+
+    process.nextTick(() => console.log("nextTick"));
+
+    Promise.resolve().then(() => console.log("Promise"));
+
+    queueMicrotask(() => console.log("Microtask"));
+
+    setTimeout(() => console.log("Timeout"), 0);
+
+    setImmediate(() => console.log("Immediate"));
+
+});
+Output
+
+FS
+nextTick
+Promise
+Microtask
+Immediate
+Timeout
+Why?
+
+Poll Phase
+    │
+    ▼
+fs.readFile callback
+    │
+    ▼
+nextTick
+    │
+    ▼
+Promise
+    │
+    ▼
+queueMicrotask
+    │
+    ▼
+Poll phase ends
+    │
+    ▼
+Check phase
+    │
+    ▼
+setImmediate
+    │
+    ▼
+Next Event Loop iteration
+    │
+    ▼
+Timers phase
+    │
+    ▼
+setTimeout
+Final Interview Order
+Priority	API
+1	Synchronous Code
+2	process.nextTick()
+3	Promise.then() / queueMicrotask() (FIFO order)
+4	setTimeout() / setInterval() (Timers phase)
+5	I/O callbacks (fs.readFile, sockets, etc.) when they become ready (Poll phase)
+6	setImmediate() (Check phase)
+Important caveats
+setTimeout(..., 0) vs setImmediate() at the top level: the order is not guaranteed.
+
+Inside an I/O callback (like fs.readFile()): setImmediate() always runs before setTimeout(..., 0) because the Event Loop moves from the Poll phase directly to the Check phase before starting the next Timers phase.
+
+If you understand this ordering and the two caveats above, you can solve almost every Node.js Event Loop output question asked in interviews.
+
+
+webapis 
+
+This is an important distinction because many tutorials explain the Event Loop using Web APIs, but Node.js does not have Web APIs.
+
+What are Web APIs?
+Web APIs are provided by the browser, not by JavaScript itself.
+
+For example:
+
+setTimeout(() => {
+    console.log("Hello");
+}, 1000);
+People often think JavaScript executes setTimeout().
+
+❌ Wrong.
+
+In the browser:
+
+JavaScript
+     │
+     ▼
+ Browser Web APIs
+     │
+ Timer starts
+     │
+ Callback Queue
+     │
+ Event Loop
+     │
+ Call Stack
+The browser provides:
+
+setTimeout()
+
+setInterval()
+
+fetch()
+
+XMLHttpRequest
+
+DOM APIs
+
+addEventListener()
+
+MutationObserver
+
+requestAnimationFrame()
+
+These are Web APIs.
+
+Browser Architecture
+               Browser
+
+      JavaScript Engine (V8)
+
+              │
+
+         Call Stack
+
+              │
+
+        Web APIs
+      ┌───────────────┐
+      │ setTimeout    │
+      │ fetch         │
+      │ DOM           │
+      │ Events        │
+      └───────────────┘
+
+              │
+
+      Callback Queue
+
+              │
+
+        Event Loop
+Does Node.js have Web APIs?
+❌ No.
+
+Node.js has:
+
+No DOM
+
+No Window
+
+No Document
+
+No Browser
+
+No Web APIs
+
+Instead it has libuv.
+
+Node.js Architecture
+            JavaScript
+
+                │
+
+           V8 Engine
+
+                │
+
+          Call Stack
+
+                │
+
+             libuv
+
+      ┌──────────────┐
+      │ Event Loop   │
+      │ Timers       │
+      │ Thread Pool  │
+      │ Network I/O  │
+      └──────────────┘
+
+                │
+
+      OS Kernel / Thread Pool
+Browser vs Node.js
+Browser
+setTimeout(() => {}, 1000);
+Flow
+
+JavaScript
+
+↓
+
+Browser Web API
+
+↓
+
+Timer
+
+↓
+
+Callback Queue
+
+↓
+
+Event Loop
+Node.js
+setTimeout(() => {}, 1000);
+Flow
+
+JavaScript
+
+↓
+
+libuv Timer
+
+↓
+
+Timers Queue
+
+↓
+
+Event Loop
+No Web API exists.
+
+Another Example
+Browser
+fetch("/users");
+Flow
+
+JavaScript
+
+↓
+
+Browser Networking API
+
+↓
+
+Internet
+
+↓
+
+Promise
+Node.js
+const https = require("https");
+
+https.get(...);
+Flow
+
+JavaScript
+
+↓
+
+libuv
+
+↓
+
+OS Networking
+
+↓
+
+Poll Queue
+
+↓
+
+Event Loop
+File System
+Browser
+
+fs.readFile()
+Impossible.
+
+Browsers cannot read local files directly for security reasons.
+
+Node.js
+
+fs.readFile("test.txt");
+Flow
+
+JavaScript
+
+↓
+
+libuv Thread Pool
+
+↓
+
+Read File
+
+↓
+
+Poll Queue
+
+↓
+
+Event Loop
+Why do people say "Web APIs" in Event Loop videos?
+Because most Event Loop tutorials teach JavaScript in the browser.
+
+Example:
+
+console.log("A");
+
+setTimeout(() => {
+    console.log("B");
+}, 0);
+
+console.log("C");
+Browser explanation:
+
+Call Stack
+
+↓
+
+Web API
+
+↓
+
+Callback Queue
+
+↓
+
+Event Loop
+Node.js explanation:
+
+Call Stack
+
+↓
+
+libuv Timer
+
+↓
+
+Timers Queue
+
+↓
+
+Event Loop
+The JavaScript code is the same, but the runtime providing the asynchronous functionality is different.
+
+Quick Comparison
+Feature	Browser	Node.js
+DOM	✅	❌
+Window	✅	❌
+Document	✅	❌
+Web APIs	✅	❌
+libuv	❌	✅
+Thread Pool	❌	✅
+File System (fs)	❌	✅
+setTimeout() provider	Browser	libuv
+fetch() provider	Browser networking stack	Node runtime (built-in in modern Node.js)
+Event Loop	Browser Event Loop	libuv Event Loop
+Interview Answer
+If an interviewer asks:
+
+"Does Node.js have Web APIs?"
+
+A strong answer is:
+
+No. Web APIs are provided by browsers. Node.js is not a browser, so it doesn't have Web APIs. Instead, Node.js uses libuv to provide asynchronous features like timers, the Event Loop, file system operations, and networking. The browser uses Web APIs for things like setTimeout, fetch, and the DOM, while Node.js relies on libuv and the operating system to implement similar asynchronous behavior.
+
+
+libuv and webapi defination
+
+1. What are Web APIs?
+Definition:
+
+Web APIs are APIs provided by the browser that allow JavaScript to interact with browser features and perform asynchronous operations. They are not part of the JavaScript language (ECMAScript).
+
+JavaScript itself only knows the language syntax (variables, loops, functions, promises, etc.). It does not know how to:
+
+Wait for 5 seconds
+
+Make an HTTP request
+
+Access the DOM
+
+Listen for mouse clicks
+
+The browser provides these capabilities through Web APIs.
+
+Examples of Web APIs
+setTimeout()
+setInterval()
+fetch()
+XMLHttpRequest()
+addEventListener()
+requestAnimationFrame()
+localStorage
+sessionStorage
+navigator
+document
+window
+Browser Architecture
+          Browser
+
+     JavaScript Engine
+            │
+            ▼
+       Call Stack
+            │
+            ▼
+         Web APIs
+            │
+            ▼
+     Callback Queue
+            │
+            ▼
+        Event Loop
+Example
+console.log("Start");
+
+setTimeout(() => {
+    console.log("Hello");
+}, 1000);
+
+console.log("End");
+Flow:
+
+JavaScript
+
+↓
+
+setTimeout()
+
+↓
+
+Browser Web API
+
+↓
+
+1 second
+
+↓
+
+Callback Queue
+
+↓
+
+Event Loop
+
+↓
+
+Call Stack
+
+↓
+
+Hello
+2. What is libuv?
+Definition:
+
+libuv is a cross-platform C library used by Node.js that provides the Event Loop, asynchronous I/O, timers, networking, and a thread pool. It enables Node.js to perform non-blocking operations.
+
+Without libuv, Node.js would execute only synchronous JavaScript.
+
+Responsibilities of libuv
+Event Loop
+
+Timers (setTimeout, setInterval)
+
+File System (fs)
+
+Networking (TCP/UDP)
+
+Thread Pool
+
+DNS lookups (when required)
+
+Crypto operations
+
+Compression (zlib)
+
+Node.js Architecture
+             Node.js
+
+         JavaScript (V8)
+
+               │
+
+          Call Stack
+
+               │
+
+             libuv
+
+      ┌───────────────┐
+      │ Event Loop    │
+      │ Thread Pool   │
+      │ Timers        │
+      │ Network I/O   │
+      └───────────────┘
+
+               │
+
+      OS Kernel / Threads
+Example using libuv
+const fs = require("fs");
+
+console.log("Start");
+
+fs.readFile("test.txt", () => {
+    console.log("Done");
+});
+
+console.log("End");
+Flow:
+
+JavaScript
+
+↓
+
+fs.readFile()
+
+↓
+
+libuv Thread Pool
+
+↓
+
+Read File
+
+↓
+
+Poll Queue
+
+↓
+
+Event Loop
+
+↓
+
+Done
+Browser vs Node.js
+Browser
+JavaScript
+
+↓
+
+Web APIs
+
+↓
+
+Callback Queue
+
+↓
+
+Event Loop
+Node.js
+JavaScript
+
+↓
+
+libuv
+
+↓
+
+Thread Pool / OS
+
+↓
+
+Event Loop
+
+↓
+
+Callback
+Comparison Table
+Feature	Web APIs	libuv
+Provided by	Browser	Node.js
+Language	C++/Browser implementation	C library
+Purpose	Access browser features	Provide asynchronous runtime for Node.js
+Event Loop	Browser Event Loop	libuv Event Loop
+Thread Pool	❌	✅
+File System	❌	✅
+DOM	✅	❌
+Networking	Browser networking APIs	OS networking via libuv
+Timers	Browser implementation	libuv implementation
+Easy Way to Remember
+Browser
+JavaScript
+      │
+      ▼
+   Web APIs
+      │
+      ▼
+ Event Loop
+Think:
+
+Web APIs = Browser features
+
+Node.js
+JavaScript
+      │
+      ▼
+     libuv
+      │
+      ▼
+ Event Loop
+Think:
+
+libuv = Node.js engine for asynchronous operations
+
+Interview Definition (2 Lines)
+Web APIs
+Web APIs are browser-provided interfaces that allow JavaScript to interact with browser features such as timers, DOM manipulation, networking, and events. They are not part of the JavaScript language itself.
+
+libuv
+libuv is a cross-platform C library used by Node.js to implement the Event Loop, asynchronous I/O, timers, networking, and a thread pool, enabling Node.js to perform non-blocking operations efficiently.
+
+These are concise, accurate definitions that interviewers typically expect.
+
+
+so i can say node do not have webapi to do task like settimeout , setinterval 
+so itt use libuv to do so ?
+
+✅ Yes, that's essentially correct, but here's the technically accurate way to say it in an interview.
+
+You can say:
+
+Node.js does not have Browser Web APIs because it is not a browser. Instead, Node.js uses libuv to implement asynchronous features like setTimeout(), setInterval(), the Event Loop, file system operations, and networking.
+
+Browser
+When you write:
+
+setTimeout(() => {
+    console.log("Hello");
+}, 1000);
+The flow is:
+
+JavaScript
+
+↓
+
+Browser Web API (Timer)
+
+↓
+
+Callback Queue
+
+↓
+
+Event Loop
+
+↓
+
+Call Stack
+The browser provides the timer.
+
+Node.js
+The same code:
+
+setTimeout(() => {
+    console.log("Hello");
+}, 1000);
+Flow:
+
+JavaScript
+
+↓
+
+libuv Timer
+
+↓
+
+Timers Queue
+
+↓
+
+Event Loop
+
+↓
+
+Call Stack
+There is no Browser Web API involved.
+
+Another Example
+const fs = require("fs");
+
+fs.readFile("a.txt", () => {
+    console.log("Done");
+});
+Flow:
+
+JavaScript
+
+↓
+
+libuv
+
+↓
+
+Thread Pool
+
+↓
+
+Read File
+
+↓
+
+Poll Queue
+
+↓
+
+Event Loop
+
+↓
+
+Callback
+Again, libuv is responsible for the asynchronous work.
+
+One Important Correction
+Many people say:
+
+❌ "libuv does all async work."
+
+That's not completely true.
+
+A better explanation is:
+
+libuv manages the Event Loop and asynchronous operations.
+
+For file system, crypto, compression, etc., libuv uses its thread pool.
+
+For network I/O (HTTP, TCP, sockets), libuv usually relies on the operating system's asynchronous I/O mechanisms (such as epoll on Linux, kqueue on macOS, or IOCP on Windows) instead of the thread pool.
+
+Interview Answer (Perfect)
+Node.js doesn't have Browser Web APIs because it isn't a browser. Instead, it uses libuv, a C library, to provide asynchronous features such as the Event Loop, timers (setTimeout, setInterval), file system operations, and networking. libuv coordinates these operations using the operating system and, when needed, its thread pool, allowing Node.js to remain non-blocking.
+
+This answer is accurate and is exactly the level of detail expected in most Node.js interviews.
+
+
