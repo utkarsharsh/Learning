@@ -9,9 +9,7 @@ app.use(cors({
 app.use(express.json());
 const router = express.Router();
 
-router.get("/posts",(req,res)=>{
-     
-      
+router.get("/posts",(req,res)=>{ 
       res.status(200).json({message:"data received successfully"});
 }  );
 

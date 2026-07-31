@@ -5,11 +5,11 @@ async function api(){
     const userIdName=document.querySelector('#userIdName');
     const TitleName=document.querySelector('#TitleName');
     const bodyName=document.querySelector('#bodyName');
+    
+
     userIdName.innerHTML=`<p> ${data.id} </p>`
     TitleName.innerHTML=`<p> ${data.title} </p>`
-    bodyName.innerHTML=`<p> ${data.body} </p>`
-
-    
+    bodyName.innerHTML=`<p> ${data.body} </p>` 
     console.log(data);
 }
 
