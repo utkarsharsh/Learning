@@ -1,32 +1,21 @@
 import {createSlice} from '@reduxjs/toolkit'
 
-
-// state
-// {
-//     Id, tansname , completed
-// }
-
-
-const counter=createSlice({
-    name:'counter',
-    initialState:{
-      todos:[]
+const slice= createSlice({
+  name:'counter',
+  initialState:{
+   count:0
+  },
+  reducers:{
+    increase: (state)=>{
+   state.count=   state.count+1;
     },
-    reducers:{
-        add:(state,action)=>{
-         state.todos.push({
-            id:action.payload.id,
-            taskname:action.payload.name,
-            completed:false,
-         })
-        },
-        deletes:(state,action)=>{
-       state.todos=  state.todos.filter((e)=>{
-           if(e.id!=action.payload.id)  return true;
-           return false;
-         })
+    increaseBy: (state,action)=>{
+   state.count=   state.count+ action.payload;
     }
-}});
 
-export const {add,deletes } =counter.actions ;
-export default counter.reducer ;
+  }
+})
+
+
+export const  { increase,increaseBy }=slice.actions;
+export default slice.reducer;
