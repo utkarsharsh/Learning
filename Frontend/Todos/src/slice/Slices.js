@@ -1,21 +1,19 @@
 import {createSlice} from '@reduxjs/toolkit'
 
-const slice= createSlice({
-  name:'counter',
+ const slice= createSlice({
+  name:"Slice",
   initialState:{
-   count:0
+    totalitem:[],
+    
   },
   reducers:{
-    increase: (state)=>{
-   state.count=   state.count+1;
+    add :(state,action)=>{
+      state.totalitem.push(action.payload);
     },
-    increaseBy: (state,action)=>{
-   state.count=   state.count+ action.payload;
-    }
 
   }
-})
 
+});
 
-export const  { increase,increaseBy }=slice.actions;
+export const {add} = slice.actions;
 export default slice.reducer;
