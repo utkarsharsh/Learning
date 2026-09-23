@@ -15,4 +15,5 @@ const slice= createSlice({
 });
 
 export const {add} =slice.actions;
+
 export default slice.reducer;
