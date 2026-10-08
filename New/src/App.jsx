@@ -1,33 +1,48 @@
-import { useState,useMemo, useCallback } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
+import React, { useState } from 'react' 
+import { useSelector, useDispatch } from 'react-redux'
 import './App.css'
-import Achild from './Achild'
-import { Bchild } from './Bchild'
+
+import { add ,rem} from './slice/Slice.js';
 function App() {
-  const [state1,setstate1] =useState(0);
-  const [state2,setstate2] =useState(0);
-  const [state3,setstate3] = useState(0);
-  console.log('3',state3);
-  
-  const f= useCallback(()=>{
-    function abc(){
-    console.log("abc")
-  };
-   return abc;
-  },[]);
+  const [inp,setinp]=useState("");
+  const alltask= useSelector((state)=> state.todo.task);
+  const total= useSelector((state)=> state.todo.total);
+  const dispatch=useDispatch();
+ 
+  return (
+    <div className="App">
+      <h1>Hello, World!</h1>
+      
+      <input type='text' onChange={(e)=>{setinp(e.target.value)}}/>
+      <button onClick={()=>{
+     dispatch(add({
+     total,
+     value:inp
+     }))
+      }}>Add</button>
 
-  
-return (<>
-<Achild  prop={state1}/>
-<Bchild prop={state2}/>
 
-<p> State 3 value is {state3}</p>
-<button onClick={()=>{
-  setstate3(state3+1);
-}}>click 1</button>
-</>)
+      <div>
+        All taskes:
+        {
+          alltask && alltask.map((e,idx)=>{
+            return (
+            <div key={idx}>
+            <>
+            {e?.value}
+            <button onClick={()=>{
+              console.log(e?.total)
+              dispatch(rem(e.total));
+            }}>Remove</button>
+
+            </>
+            </div>)
+          })
+        }
+
+      </div>
+    </div>
+  )
 
 
 }

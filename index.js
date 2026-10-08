@@ -1,38 +1,27 @@
-// Online JavaScript compiler (editor)
-// Write and run JavaScript online using this JS editor.
+const i =document.querySelector('#a');
+const j =document.querySelector('#val1');
+const k =document.querySelector('#val');
 
-console.log("Try clicking the Run button.");
-async  function myapi() {
-  try {
-    const response = await fetch(
-      'https://jsonplaceholder.typicode.com/posts/1',{
-        headers:{
-            'Content-type' : 'application/json',
-        }
-        ,
-        method:'GET'
-      }
-    );
+console.log('js');
 
-    if (!response.ok) {
-      throw new Error(`HTTP Error: ${response.status}`);
-    }
+function debounce(fn, delay) {
+  let timer;
 
-    return await response.json();
-  
-   
-  } catch (err) {
-    throw err;
-  }
+  return (...args) => {
+    clearTimeout(timer);
+
+    timer = setTimeout(() => {
+      fn(...args);
+    }, delay);
+  };
 }
-myapi().then((data)=>{
-  console.log(data);
-}).catch((err)=>{
-  console.log(err)
-});
+const de= debounce((text)=>{
+ val.innerText=text;
+},1000);
 
 
-
-
-
-
+i.addEventListener("input",(e)=>{
+ 
+ val1.innerText=e.target.value;
+ de(e.target.value);
+})
